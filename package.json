@@ -1,6 +1,6 @@
 {
   "name": "moulaga-sdk",
-  "version": "0.1.0",
+  "version": "0.8.0",
   "description": "The Moulaga Protocol SDK, for backend usage",
   "main": "./lib/index.js",
   "repository": "https://github.com/Moulaga-Corp/moulaga-sdk.git",
@@ -9,6 +9,12 @@
   "private": true,
   "scripts": {
     "build": "tsc"
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./authSig": "./lib/authSig",
+    "./policy": "./lib/policy",
+    "./resourceId": "./lib/resourceId"
   },
   "devDependencies": {
     "@types/node": "18.11.9",
