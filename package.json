@@ -1,0 +1,22 @@
+{
+  "name": "moulaga-sdk",
+  "version": "0.1.0",
+  "description": "The Moulaga Protocol SDK, for backend usage",
+  "main": "./lib/index.js",
+  "repository": "https://github.com/Moulaga-Corp/moulaga-sdk.git",
+  "author": "Moulaga Corp",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.9",
+    "typescript": "4.9.3"
+  },
+  "dependencies": {
+    "@lit-protocol/sdk-nodejs": "1.1.234",
+    "ethers": "5.7.2",
+    "siwe": "2.0.5"
+  }
+}
