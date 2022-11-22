@@ -1,77 +1,21 @@
 import { LitNodeClient } from "@lit-protocol/sdk-nodejs";
 import { Wallet, providers, utils } from "ethers";
 import { generateNonce } from "siwe";
+import { authSigFactory, AuthSigType } from "./authSig";
 import MOULAGA_CONSTANTS from "./constants";
+import { ResourceIdType } from "./resourceId";
 
 interface MoulagaSdkConfig {
   holderPrivateKey: string;
 }
 
-interface AuthSigType {
-  sig: string;
-  derivedVia: string;
-  signedMessage: string;
-  address: string;
-}
-
-interface ResourceIdType {
-  baseUrl: string;
-  path: string;
-  orgId: string;
-  role: string;
-  extraData: string;
-}
-
 class MoulagaSdk {
+  get holderWalletAddress(): string { return this._holderWallet.address; }
+
   private constructor(
     private readonly _litClient: typeof LitNodeClient,
     private _holderWallet: Wallet
   ) {}
-
-  generatePolicy(feederWallet: string): any {
-    // LIT Access Condition
-    // must be the feeder or the data holder
-    // to pass the check
-    return [
-      {
-        contractAddress: "",
-        standardContractType: "",
-        chain: MOULAGA_CONSTANTS.CHAIN,
-        method: "",
-        parameters: [
-          ":userAddress",
-        ],
-        returnValueTest: {
-          comparator: "=",
-          value: feederWallet
-        }
-      },
-      { operator: "or" },
-      {
-        contractAddress: "",
-        standardContractType: "",
-        chain: MOULAGA_CONSTANTS.CHAIN,
-        method: "",
-        parameters: [
-          ":userAddress",
-        ],
-        returnValueTest: {
-          comparator: "=",
-          value: this._holderWallet.address
-        }
-      },
-    ]
-  }
-
-  generateResourceId(
-    baseUrl: string, 
-    path: string, 
-    orgId: string = "", 
-    role: string = MOULAGA_CONSTANTS.CONSUMER_ROLE, 
-    extraData: string = ""
-  ): ResourceIdType {
-    return {baseUrl, path, orgId, role, extraData} as const;
-  }
 
   async savePolicy(policy: any, resourceId: ResourceIdType, permanent: boolean = false): Promise<void> {
     const authSig = await this.generateAuthSigForHolder();
@@ -85,7 +29,7 @@ class MoulagaSdk {
   }
 
   async grantJWT(message: string, signedMessage: string, policy: any, resourceId: ResourceIdType): Promise<string> {
-    const authSig = this.generateAuthSig(message, signedMessage);
+    const authSig = authSigFactory(message, signedMessage);
     return this._litClient.getSignedToken({
       unifiedAccessControlConditions: policy,
       chain: MOULAGA_CONSTANTS.CHAIN,
@@ -114,20 +58,10 @@ class MoulagaSdk {
       && payload.extraData === requiredExtraData;
   }
 
-  private generateAuthSig(message: string, signedMessage: string): AuthSigType {
-    const callerWallet = utils.verifyMessage(message, signedMessage);
-    return {
-      sig: signedMessage,
-      derivedVia: "web3.eth.personal.sign",
-      signedMessage: message,
-      address: callerWallet
-    } as const;
-  }
-
   private async generateAuthSigForHolder(): Promise<AuthSigType> {
     const nonce = generateNonce();
     const sig = await this._holderWallet.signMessage(nonce);
-    return this.generateAuthSig(nonce, sig);
+    return authSigFactory(nonce, sig);
   }
 
   private async connect(): Promise<void> {
@@ -147,7 +81,7 @@ class MoulagaSdk {
       litNetwork: process.env.NODE_ENV === "production" ? "jalapeno" : "serrano"
     });
 
-    const sdk =  new MoulagaSdk(litClient, holderWallet);
+    const sdk = new MoulagaSdk(litClient, holderWallet);
     await sdk.connect();
     return sdk;
   }
