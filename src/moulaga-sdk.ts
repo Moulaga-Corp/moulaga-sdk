@@ -17,7 +17,7 @@ class MoulagaSdk {
     private _holderWallet: Wallet
   ) {}
 
-  async savePolicy(policy: any, resourceId: ResourceIdType, permanent: boolean = false): Promise<void> {
+  async savePolicyForResource(policy: any, resourceId: ResourceIdType, permanent: boolean = false): Promise<void> {
     const authSig = await this.generateAuthSigForHolder();
     await this._litClient.saveSigningCondition({
       unifiedAccessControlConditions: policy,
@@ -28,7 +28,7 @@ class MoulagaSdk {
     })
   }
 
-  async grantJWT(message: string, signedMessage: string, policy: any, resourceId: ResourceIdType): Promise<string> {
+  async grantJWTForResource(message: string, signedMessage: string, policy: any, resourceId: ResourceIdType): Promise<string> {
     const authSig = authSigFactory(message, signedMessage);
     return this._litClient.getSignedToken({
       unifiedAccessControlConditions: policy,
