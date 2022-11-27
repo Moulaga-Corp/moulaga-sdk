@@ -49,7 +49,7 @@ async function encryptSymmetricKeyAndIv(symmetricKey: Buffer, iv: Buffer, public
 async function decryptSymmetricKeyAndIv(keyData: string, privateKey: string): Promise<[Buffer, Buffer]> {
   const [keyCipher, iv] = keyData.split(" ");
   if (iv === undefined) {
-    throw new Error("Invalid key data");
+    throw new Error("Invalid key data.");
   }
 
   return decryptWithPrivateKey(privateKey, cipher.parse(keyCipher))

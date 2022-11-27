@@ -2,7 +2,7 @@ import Crypto from "crypto";
 import { cipher, decryptWithPrivateKey, encryptWithPublicKey } from "eth-crypto";
 import { Wallet, providers } from "ethers";
 import MOULAGA_CONSTANTS from "./constants";
-import { decryptWithAes, encryptSymmetricKeyAndIv } from "./utils";
+import { decryptWithAes, encryptSymmetricKeyAndIv } from "./utils/encryption";
 
 interface MoulagaSdk {
   onboardFeeder: (feederAddress: string, feederPublicKey: string) => Promise<void>;
