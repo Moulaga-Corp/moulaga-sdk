@@ -1,89 +1,57 @@
-import { LitNodeClient } from "@lit-protocol/sdk-nodejs";
-import { Wallet, providers, utils } from "ethers";
-import { generateNonce } from "siwe";
-import { authSigFactory, AuthSigType } from "./authSig";
+import Crypto from "crypto";
+import { cipher, decryptWithPrivateKey, encryptWithPublicKey } from "eth-crypto";
+import { Wallet, providers } from "ethers";
 import MOULAGA_CONSTANTS from "./constants";
-import { ResourceIdType } from "./resourceId";
+import { decryptWithAes, encryptSymmetricKeyAndIv } from "./utils";
 
-interface MoulagaSdkConfig {
-  holderPrivateKey: string;
-}
 
 class MoulagaSdk {
-  get holderWalletAddress(): string { return this._holderWallet.address; }
+  constructor(private readonly _wallet: Wallet) {}
 
-  private constructor(
-    private readonly _litClient: typeof LitNodeClient,
-    private _holderWallet: Wallet
-  ) {}
+  async onboardFeeder(feederAddress: string, feederPublicKey: string): Promise<void> {
+    const key = Crypto.randomBytes(32);
+    const iv = Crypto.randomBytes(16);
 
-  async savePolicyForResource(policy: any, resourceId: ResourceIdType, permanent: boolean = false): Promise<void> {
-    const authSig = await this.generateAuthSigForHolder();
-    await this._litClient.saveSigningCondition({
-      unifiedAccessControlConditions: policy,
-      authSig,
-      chain: MOULAGA_CONSTANTS.CHAIN,
-      resourceId,
-      permanent,
-    })
+    const keyDataCiphers = await Promise.all(
+      [feederPublicKey, this._wallet.publicKey]
+        .map(pub => encryptSymmetricKeyAndIv(key, iv, pub))
+    );
+    // call to contract to onboard
   }
 
-  async grantJWTForResource(message: string, signedMessage: string, policy: any, resourceId: ResourceIdType): Promise<string> {
-    const authSig = authSigFactory(message, signedMessage);
-    return this._litClient.getSignedToken({
-      unifiedAccessControlConditions: policy,
-      chain: MOULAGA_CONSTANTS.CHAIN,
-      authSig,
-      resourceId,
-    });
+  async prepareDataForConsumer(keyDataCipher: string, encrypedData: string, consumerPublicKey: string) {
+    const validPublicKey = consumerPublicKey.startsWith("0x") ? consumerPublicKey.slice(2) : consumerPublicKey;
+    const [keyCipher, iv] = keyDataCipher.split(" ");
+    const _cipher = cipher.parse(keyCipher);
+    const consumerCipher = await decryptWithPrivateKey(this._wallet.privateKey, _cipher)
+      .then(symmetricKey => encryptWithPublicKey(validPublicKey, symmetricKey))
+      .then(c => `${cipher.stringify(c)} ${iv}`);
+
+    return {key: consumerCipher, data: encrypedData} as const;
   }
 
-  async verifyJWT(
-    jwt: string, 
-    requiredBaseUrl: string, 
-    requiredPath: string, 
-    requiredOrgId: string = "",
-    requiredRole: string = MOULAGA_CONSTANTS.CONSUMER_ROLE,
-    requiredExtraData: string = "",
-  ): Promise<boolean> {
-    const { verified, payload } = await this._litClient.verifyJWT(jwt);
-    if (!verified) {
-      return false;
-    }
-
-    return payload.baseUrl === requiredBaseUrl
-      && payload.path === requiredPath
-      && payload.orgId === requiredOrgId
-      && payload.role === requiredRole
-      && payload.extraData === requiredExtraData;
+  // key data must be a string containing the following separated by a space:
+  // - the hex cipher for the symmetric key
+  // - the hex initial vector (iv) used to encrypt the data
+  async decryptData(keyDataCipher: string, encrypedData: string): Promise<string> {
+    const [keyCipher, iv] = keyDataCipher.split(" ");
+    const _cipher = cipher.parse(keyCipher);
+    return decryptWithPrivateKey(this._wallet.privateKey, _cipher)
+      .then(symmetricKey => decryptWithAes(
+        encrypedData, 
+        Buffer.from(symmetricKey, "hex"), 
+        Buffer.from(iv, "hex")
+    ));
   }
 
-  private async generateAuthSigForHolder(): Promise<AuthSigType> {
-    const nonce = generateNonce();
-    const sig = await this._holderWallet.signMessage(nonce);
-    return authSigFactory(nonce, sig);
-  }
-
-  private async connect(): Promise<void> {
-    await this._litClient.connect();
-  }
-
-  static async init({ holderPrivateKey }: MoulagaSdkConfig): Promise<MoulagaSdk> {
-    const holderWallet = new Wallet(
-      holderPrivateKey, 
+  static from(privateKey: string): MoulagaSdk {
+    return new MoulagaSdk(new Wallet(
+      privateKey, 
       new providers.JsonRpcProvider(
         MOULAGA_CONSTANTS.RPC_ENDPOINT, 
         MOULAGA_CONSTANTS.CHAIN_ID
       )
-    );
-    const litClient = LitNodeClient({ 
-      alertWhenUnauthorized: false, 
-      litNetwork: process.env.NODE_ENV === "production" ? "jalapeno" : "serrano"
-    });
-
-    const sdk = new MoulagaSdk(litClient, holderWallet);
-    await sdk.connect();
-    return sdk;
+    ));
   }
 }
 
