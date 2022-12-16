@@ -38,7 +38,7 @@ function withWallet(_wallet: Wallet): MoulagaSdk {
    * @returns encrypted data as string
    */
   async function prepareDataForStorage(jsonData: string, feederAddress: string): Promise<string> {
-    const key = await protocolContract.functions.getHolderKeyForFeeder(feederAddress);
+    const [key] = await protocolContract.functions.getHolderKeyForFeeder(feederAddress);
     const [symmetricKey, iv] = await decryptSymmetricKeyAndIv(key, _wallet.privateKey);
     return encryptWithAes(jsonData, symmetricKey, iv);
   }
