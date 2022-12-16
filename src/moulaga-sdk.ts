@@ -4,10 +4,11 @@ import { Contract, providers, Wallet } from "ethers";
 import MOULAGA_CONSTANTS from "./constants";
 import moulagaProtocolAbi from "./contracts/moulaga-protocol.abi";
 import moulagaSbtAbi from "./contracts/moulaga-sbt.abi";
-import { decryptWithAes, encryptSymmetricKeyAndIv } from "./utils/encryption";
+import { decryptSymmetricKeyAndIv, decryptWithAes, encryptSymmetricKeyAndIv, encryptWithAes } from "./utils/encryption";
 
 interface MoulagaSdk {
   onboardFeeder: (feederAddress: string, feederPublicKey: string) => Promise<void>;
+  prepareDataForStorage: (jsonData: string, feederAddress: string) => Promise<string>;
   isAuthorized: (feeder: string, consumer: string, scheme: string) => Promise<boolean>;
   prepareDataForConsumer: (keyDataCipher: string, encrypedData: string, consumerPublicKey: string) => Promise<{keyData: string; data: string;}>;
   decryptData: (keyDataCipher: string, encrypedData: string) => Promise<string>;
@@ -28,6 +29,18 @@ function withWallet(_wallet: Wallet): MoulagaSdk {
     );
     // call to contract to onboard
     await protocolContract.onboardFeeder(feederAddress, keyForFeeder, keyForHolder);
+  }
+
+  /**
+   * @notice this method should be called before writing new or updated data to the storage service
+   * @param jsonData the JSON string to be stored
+   * @param feederAddress the address of the wallet related to said data
+   * @returns encrypted data as string
+   */
+  async function prepareDataForStorage(jsonData: string, feederAddress: string): Promise<string> {
+    const key = await protocolContract.functions.getHolderKeyForFeeder(feederAddress);
+    const [symmetricKey, iv] = await decryptSymmetricKeyAndIv(key, _wallet.privateKey);
+    return encryptWithAes(jsonData, symmetricKey, iv);
   }
 
   /**
@@ -73,7 +86,7 @@ function withWallet(_wallet: Wallet): MoulagaSdk {
     ));
   }
 
-  return { onboardFeeder, isAuthorized, prepareDataForConsumer, decryptData } as const;
+  return { onboardFeeder, prepareDataForStorage, isAuthorized, prepareDataForConsumer, decryptData } as const;
 } 
 
 function fromPrivateKey(privateKey: string): MoulagaSdk {

@@ -21,7 +21,26 @@ const moulagaProtocolAbi = [
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
-	}
+	},
+	{
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_feeder",
+          "type": "address"
+        }
+      ],
+      "name": "getHolderKeyForFeeder",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
 ];
 
 export default moulagaProtocolAbi;
