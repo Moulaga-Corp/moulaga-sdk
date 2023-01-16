@@ -57,14 +57,16 @@ function withWallet(_wallet: Wallet): MoulagaSdk {
   /**
    * @notice you should call "isAuthorized" to check a consumer's credentials before fetching / transferring the data !
    * -> this method only prepares the data and the key, no credentials check is performed
-   * @param keyDataCipher retrieved cipher of the key used to decrypt the data, should be encrpted for the holder at this point
+   * @param feederAddress public address of the feeder whose data will be encrypted
    * @param encryptedData the data to share
    * @param consumerPublicKey public key of the consumer, will be used to safely share the symmetric key
    * @returns an object containing 
    *  - keyData the new key cipher, only readable by the consumer
    *  - data the data to be shared with the consumer
    */
-  async function prepareDataForConsumer(keyDataCipher: string, encryptedData: string, consumerPublicKey: string) {
+  async function prepareDataForConsumer(feederAddress: string, encryptedData: string, consumerPublicKey: string) {
+    const [keyDataCipher] = await protocolContract.functions.getHolderKeyForFeeder(feederAddress);
+    
     const validPublicKey = consumerPublicKey.startsWith("0x") ? consumerPublicKey.slice(2) : consumerPublicKey;
     const [keyCipher, iv] = keyDataCipher.split(" ");
     const _cipher = cipher.parse(keyCipher);
