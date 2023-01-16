@@ -10,7 +10,7 @@ interface MoulagaSdk {
   onboardFeeder: (feederAddress: string, feederPublicKey: string) => Promise<void>;
   prepareDataForStorage: (jsonData: string, feederAddress: string) => Promise<string>;
   isAuthorized: (feeder: string, consumer: string, scheme: string) => Promise<boolean>;
-  prepareDataForConsumer: (keyDataCipher: string, encrypedData: string, consumerPublicKey: string) => Promise<{keyData: string; data: string;}>;
+  prepareDataForConsumer: (feederAddress: string, encrypedData: string, consumerPublicKey: string) => Promise<{keyData: string; data: string;}>;
   decryptData: (keyDataCipher: string, encrypedData: string) => Promise<string>;
 }
 
